@@ -14,6 +14,10 @@ math.randomseed(Th*3600+Tm*60+Ts)
 MAX_COOKIES = 1e300
 NUM_SUFFIX = {"","K","M","B","T","QA","QI","SX","SP","OC","NO","DC"}
 
+-- DEBUG: Code disabled - To debug/testing purposes only
+-- Sequence: UP, UP, DOWN, DOWN, LEFT, RIGHT, LEFT, RIGHT, B, A (add 500M cookies)
+--[[KONAMI = {sequence = {KEY_DUP, KEY_DUP, KEY_DDOWN, KEY_DDOWN, KEY_DLEFT, KEY_DRIGHT, KEY_DLEFT, KEY_DRIGHT, KEY_B, KEY_A}, index = 1, activated = false}]]
+
 function sanitizeNumber(value)
 	local number = tonumber(value) or 0
 	if number ~= number then return 0 end
@@ -183,7 +187,7 @@ backx=0
 backy=0
 rota=255
 rotanum = 0
-version="1.0"
+version="1.1"
 Sound.init()
 function loadmusic()
 	bgm = Sound.openOgg(System.currentDirectory().."data/bgm.ogg", false)
@@ -268,17 +272,62 @@ function TOUCHCHECK()
 	end
 end
 function alternativeclick()
+	-- Botón X
 	if Controls.check(pad,KEY_X) and not Controls.check(oldpad,KEY_X) then
 		COOKIE.count=COOKIE.count+1*CURSOR.upgrade
 		COOKIE.total=COOKIE.total+1*CURSOR.upgrade
 	end
-	if Controls.check(pad,KEY_X) then
+	-- Botón L
+	if Controls.check(pad,KEY_L) and not Controls.check(oldpad,KEY_L) and not Controls.check(pad,KEY_R) then
+		COOKIE.count=COOKIE.count+1*CURSOR.upgrade
+		COOKIE.total=COOKIE.total+1*CURSOR.upgrade
+	end
+	-- Botón R
+	if Controls.check(pad,KEY_R) and not Controls.check(oldpad,KEY_R) and not Controls.check(pad,KEY_L) then
+		COOKIE.count=COOKIE.count+1*CURSOR.upgrade
+		COOKIE.total=COOKIE.total+1*CURSOR.upgrade
+	end
+	
+	if Controls.check(pad,KEY_X) or (Controls.check(pad,KEY_L) and not Controls.check(pad,KEY_R)) or (Controls.check(pad,KEY_R) and not Controls.check(pad,KEY_L)) then
 		TOUCHALTER = 1
 		if COOKIE.size < 1.2 then COOKIE.size = COOKIE.size + 0.1 end
 		else
 		TOUCHALTER = 0
 		if COOKIE.size > 1 and TOUCHALTER == 1  then COOKIE.size = COOKIE.size-0.1  end
 	end
+end
+function checkKonami()
+	-- DEBUG: Disabled just to test
+	-- Uncomment only to develop/test
+	--[[
+	-- Check if the current key pressed matches the expected key in the Konami sequence
+	local expectedKey = KONAMI.sequence[KONAMI.index]
+	
+	-- Check all keys that are part of the Konami sequence
+	local keysToCheck = {KEY_DUP, KEY_DDOWN, KEY_DLEFT, KEY_DRIGHT, KEY_A, KEY_B}
+	for _, key in ipairs(keysToCheck) do
+		if Controls.check(pad, key) and not Controls.check(oldpad, key) then
+			if key == expectedKey then
+				-- Correct key, advance in the sequence
+				KONAMI.index = KONAMI.index + 1
+				if KONAMI.index > #KONAMI.sequence then
+					-- Secuencia completa!
+					COOKIE.count = COOKIE.count + 500000000
+					COOKIE.total = COOKIE.total + 500000000
+					KONAMI.index = 1
+				end
+			else
+				-- Incorrect key, reset
+				KONAMI.index = 1
+				-- If the pressed key is the first in the sequence, start again
+				if key == KONAMI.sequence[1] then
+					KONAMI.index = 2
+				end
+			end
+			break
+		end
+	end
+	]]
 end
 function Cursor()
 	for i=1, CURSOR.count do
@@ -480,6 +529,7 @@ while System.mainLoop() do
 	pad = Controls.read()
 	if state=="GAME" then
 		normalizeCookieValues()
+		checkKonami()
 		SHINE.rot=SHINE.rot+SHINE.speed
 		if SHINE.rot >= 2*pi then SHINE.rot = SHINE.rot-2*pi end
 		CURSOR.rot=CURSOR.rot+CURSOR.speed
@@ -784,7 +834,7 @@ while System.mainLoop() do
 			gpu_drawtext(254, 220,formatNumberCompact(Price), blue)
 		end
 		gpu_drawtext(5, 5,formatNumberCompact(COOKIE.count).."  Cookies", white)
-		gpu_drawtext(5, 30,"per   sec : "..CpS, white)
+		gpu_drawtext(5, 30,"per   sec : "..formatNumberCompact(CpS), white)
 		if string.len(Tm)==2 then
 			gpu_drawtext(5, 204,Th..": "..Tm, blue)
 			else
@@ -971,10 +1021,11 @@ while System.mainLoop() do
 		
 		
 	end
-	if Controls.check(pad,KEY_L) and Controls.check(pad,KEY_R) and activatescreenshot==0  then
+	-- Screenshot deshabilitado para no interferir con L y R como clicks
+	--[[if Controls.check(pad,KEY_L) and Controls.check(pad,KEY_R) and activatescreenshot==0  then
 		System.takeScreenshot("/CookieScreenshot-"..Tm.."-"..Ts..".bmp",false)
 		activatescreenshot=255
-	end
+	end]]
 	Screen.flip()
 	Screen.waitVblankStart()
 	oldpad = pad
