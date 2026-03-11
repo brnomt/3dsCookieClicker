@@ -82,16 +82,17 @@ TEMPLE = {price = 20000000,count=0,currency = -1,name="???",tableone={},tabletwo
 WIZARDTWR = {price = 330000000,count=0,currency = -1,name="???",tableone={},tabletwo={},upgrade=1}
 CURSOR_CLICK_MULT = 1
 CURSOR_FINGER_MULT = 0
-CURSOR_PANEL = "STORE"
+CURSOR_SUBITEM_INDEX = 0
 CURSOR_UPGRADE_INDEX = 1
+CURSOR_UPGRADE_ICONS = {}
 CURSOR_UPGRADES = {
-	{name="REINFORCED INDEX FINGER", unlock=1, price=100, kind="DOUBLE", mult=2},
-	{name="CARPAL TUNNEL PREVENTION CREAM", unlock=1, price=500, kind="DOUBLE", mult=2},
-	{name="AMBIDEXTROUS", unlock=10, price=10000, kind="DOUBLE", mult=2},
-	{name="THOUSAND FINGERS", unlock=25, price=100000, kind="FINGER_BASE", mult=1},
-	{name="MILLION FINGERS", unlock=50, price=10000000, kind="FINGER_MULT", mult=5},
+	{name="REINFORCED INDEX FINGER", unlock=1, price=100, kind="DOUBLE", mult=2, iconFile="Reinforced_Index_Finger.png"},
+	{name="CARPAL TUNNEL PREVENTION CREAM", unlock=1, price=500, kind="DOUBLE", mult=2, iconFile="Carpal_tunnel_prevention_cream.png"},
+	{name="AMBIDEXTROUS", unlock=10, price=10000, kind="DOUBLE", mult=2, iconFile="Ambidextrous.png"},
+	{name="THOUSAND FINGERS", unlock=25, price=100000, kind="FINGER_BASE", mult=1, iconFile="Thousand Fingers.png"},
+	{name="MILLION FINGERS", unlock=50, price=10000000, kind="FINGER_MULT", mult=5, iconFile="Million_Fingers.png"},
 	{name="BILLION FINGERS", unlock=100, price=100000000, kind="FINGER_MULT", mult=10},
-	{name="TRILLION FINGERS", unlock=150, price=1000000000, kind="FINGER_MULT", mult=20},
+	{name="TRILLION FINGERS", unlock=150, price=1000000000, kind="FINGER_MULT", mult=20, iconFile="Trillion_Fingers.png"},
 	{name="QUADRILLION FINGERS", unlock=200, price=10000000000, kind="FINGER_MULT", mult=20},
 	{name="QUINTILLION FINGERS", unlock=250, price=10000000000000, kind="FINGER_MULT", mult=20},
 	{name="SEXTILLION FINGERS", unlock=300, price=10000000000000000, kind="FINGER_MULT", mult=20},
@@ -103,6 +104,7 @@ CURSOR_UPGRADES = {
 }
 for i=1,#CURSOR_UPGRADES do
 	CURSOR_UPGRADES[i].bought = false
+	CURSOR_UPGRADE_ICONS[i] = nil
 end
 glyph_l = {}
 glyph_r = {}
@@ -248,6 +250,7 @@ function loadall()
 	cursor = Graphics.loadImage(System.currentDirectory().."data/cursor.png")
 	ObjectsSheet = Graphics.loadImage(System.currentDirectory().."data/ObjectsSheet.png")
 	BackgroundSprites= Graphics.loadImage(System.currentDirectory().."data/BackgroundSprites.png")
+	loadCursorUpgradeIcons()
 end
 state="LOADING"
 Buttons={texture = {backON,playON,CMON,exitON,optionsON,resetON},texture2 = {backOFF,playOFF,CMOFF,exitOFF,optionsOFF,resetOFF},sizex={},sizey={},dntch={}}
@@ -284,6 +287,12 @@ function freefunction()
 	Graphics.freeImage(ButtonsSheet)
 	Graphics.freeImage(pressed)
 	Graphics.freeImage(favicon)
+	for i=1,#CURSOR_UPGRADE_ICONS do
+		if CURSOR_UPGRADE_ICONS[i] ~= nil and CURSOR_UPGRADE_ICONS[i] ~= cursor then
+			Graphics.freeImage(CURSOR_UPGRADE_ICONS[i])
+		end
+		CURSOR_UPGRADE_ICONS[i] = nil
+	end
 	Graphics.freeImage(cursor)
 	Graphics.freeImage(ObjectsSheet)
 	Graphics.freeImage(BackgroundSprites)
@@ -372,6 +381,25 @@ function loadCursorUpgrades(bits)
 	end
 	recomputeCursorUpgradeBonuses()
 end
+function loadCursorUpgradeIcons()
+	for i=1,#CURSOR_UPGRADE_ICONS do
+		if CURSOR_UPGRADE_ICONS[i] ~= nil and CURSOR_UPGRADE_ICONS[i] ~= cursor then
+			Graphics.freeImage(CURSOR_UPGRADE_ICONS[i])
+		end
+		CURSOR_UPGRADE_ICONS[i] = nil
+	end
+	for i=1,#CURSOR_UPGRADES do
+		local icon = cursor
+		local iconFile = CURSOR_UPGRADES[i].iconFile
+		if iconFile ~= nil then
+			local iconPath = System.currentDirectory().."data/cursor_upgrades/"..iconFile
+			if System.doesFileExist(iconPath) then
+				icon = Graphics.loadImage(iconPath)
+			end
+		end
+		CURSOR_UPGRADE_ICONS[i] = icon
+	end
+end
 function buyCurrentCursorUpgrade()
 	local up = getCurrentCursorUpgrade()
 	if up == nil or up.bought then return end
@@ -385,9 +413,12 @@ function drawCursorUpgradePanel()
 	local up = getCurrentCursorUpgrade()
 	if up == nil then return end
 	Graphics.fillRect(250,399,0,84,Color.new(0,0,0,120))
+	local upIcon = CURSOR_UPGRADE_ICONS[CURSOR_UPGRADE_INDEX]
+	if upIcon == nil then upIcon = cursor end
+	Graphics.drawImage(354, 8, upIcon)
 	gpu_drawtext(254,5,"CURSOR UPGRADES",white)
-	gpu_drawtext(254,23,"LEFT UPGRADE",white)
-	gpu_drawtext(254,41,"RIGHT STORE",white)
+	gpu_drawtext(254,23,"LEFT/RIGHT SUBITEM",white)
+	gpu_drawtext(254,41,"ITEM "..CURSOR_UPGRADE_INDEX.."/"..#CURSOR_UPGRADES,white)
 	gpu_drawtext(254,59,up.name,white)
 	gpu_drawtext(254,77,"PRICE "..formatNumberCompact(up.price), white)
 	gpu_drawtext(254,95,"UNLOCK "..up.unlock.." CURSOR", white)
@@ -402,7 +433,7 @@ function drawCursorUpgradePanel()
 			gpu_drawtext(254,113,"NEED MORE COOKIES", red)
 		end
 	end
-	gpu_drawtext(254,131,"UP DOWN SELECT", white)
+	gpu_drawtext(254,131,"A BUY | RIGHT NEXT", white)
 end
 function registerTapCookies(amount, x, y)
 	COOKIE.count = COOKIE.count + amount
@@ -537,7 +568,7 @@ function BUYMENU(a,num,high)
 end
 function BUYMENUPLUSONE(a,num)
 	local c = a
-	if Controls.check(pad,KEY_A) and not Controls.check(oldpad,KEY_A) and STORE.stat==num and COOKIE.count >= c.price and not (STORE.stat==0 and CURSOR_PANEL=="UPGRADES") then
+	if Controls.check(pad,KEY_A) and not Controls.check(oldpad,KEY_A) and STORE.stat==num and COOKIE.count >= c.price and not (STORE.stat==0 and CURSOR_SUBITEM_INDEX>0) then
 		Graphics.drawImage(STORE.x, STORE.y+33*STORE.stat, pressed)
 		c.count=c.count+1
 		COOKIE.count=COOKIE.count-c.price
@@ -549,7 +580,7 @@ function BUYMENUPLUSONE(a,num)
 end
 function BUYMENUMINUSONE(a,num)
 	local c = a
-	if Controls.check(pad,KEY_A) and not Controls.check(oldpad,KEY_A) and STORE.stat==num and c.count > 0 and not (STORE.stat==0 and CURSOR_PANEL=="UPGRADES") then
+	if Controls.check(pad,KEY_A) and not Controls.check(oldpad,KEY_A) and STORE.stat==num and c.count > 0 and not (STORE.stat==0 and CURSOR_SUBITEM_INDEX>0) then
 		Graphics.drawImage(STORE.x, STORE.y+33*STORE.stat, pressed)
 		c.count=c.count-1
 		COOKIE.count=COOKIE.count+c.sellprice
@@ -609,6 +640,7 @@ function continue()
 		CURSOR_UPGRADE_INDEX = tonumber(savearray[36]) or 1
 		if CURSOR_UPGRADE_INDEX < 1 then CURSOR_UPGRADE_INDEX = 1 end
 		if CURSOR_UPGRADE_INDEX > #CURSOR_UPGRADES then CURSOR_UPGRADE_INDEX = #CURSOR_UPGRADES end
+		CURSOR_SUBITEM_INDEX = 0
 	end
 end
 function ScreenButton(xbut,ybut,i,st)
@@ -706,23 +738,24 @@ while System.mainLoop() do
 	if state=="GAME" then
 		normalizeCookieValues()
 		checkKonami()
-		if STORE.stat ~= 0 and CURSOR_PANEL == "UPGRADES" then
-			CURSOR_PANEL = "STORE"
+		if STORE.stat ~= 0 and CURSOR_SUBITEM_INDEX > 0 then
+			CURSOR_SUBITEM_INDEX = 0
 		end
 		if STORE.stat == 0 then
 			if Controls.check(pad,KEY_DLEFT) and not Controls.check(oldpad,KEY_DLEFT) then
-				CURSOR_PANEL = "UPGRADES"
+				if CURSOR_SUBITEM_INDEX > 0 then
+					CURSOR_SUBITEM_INDEX = CURSOR_SUBITEM_INDEX - 1
+				end
 			end
 			if Controls.check(pad,KEY_DRIGHT) and not Controls.check(oldpad,KEY_DRIGHT) then
-				CURSOR_PANEL = "STORE"
+				if CURSOR_SUBITEM_INDEX == 0 then
+					CURSOR_SUBITEM_INDEX = CURSOR_UPGRADE_INDEX
+				elseif CURSOR_SUBITEM_INDEX < #CURSOR_UPGRADES then
+					CURSOR_SUBITEM_INDEX = CURSOR_SUBITEM_INDEX + 1
+				end
 			end
-			if CURSOR_PANEL == "UPGRADES" then
-				if Controls.check(pad,KEY_DUP) and not Controls.check(oldpad,KEY_DUP) and CURSOR_UPGRADE_INDEX > 1 then
-					CURSOR_UPGRADE_INDEX = CURSOR_UPGRADE_INDEX - 1
-				end
-				if Controls.check(pad,KEY_DDOWN) and not Controls.check(oldpad,KEY_DDOWN) and CURSOR_UPGRADE_INDEX < #CURSOR_UPGRADES then
-					CURSOR_UPGRADE_INDEX = CURSOR_UPGRADE_INDEX + 1
-				end
+			if CURSOR_SUBITEM_INDEX > 0 then
+				CURSOR_UPGRADE_INDEX = CURSOR_SUBITEM_INDEX
 				if Controls.check(pad,KEY_A) and not Controls.check(oldpad,KEY_A) then
 					buyCurrentCursorUpgrade()
 				end
@@ -954,19 +987,19 @@ while System.mainLoop() do
 			TEMPLE.avupgrade = 1
 		end
 		if CURSOR.avupgrade == 1 and CURSOR.upgrade == 1 then
-			if CURSOR_PANEL == "STORE" then UPGRADEMENU(CURSOR,0,100,0) end
+			if CURSOR_SUBITEM_INDEX == 0 then UPGRADEMENU(CURSOR,0,100,0) end
 		end
 		if CURSOR.avupgrade == 2 and CURSOR.upgrade == 2 then
-			if CURSOR_PANEL == "STORE" then UPGRADEMENU(CURSOR,0,500,1) end
+			if CURSOR_SUBITEM_INDEX == 0 then UPGRADEMENU(CURSOR,0,500,1) end
 		end
 		if CURSOR.avupgrade == 3 and CURSOR.upgrade == 4 then
-			if CURSOR_PANEL == "STORE" then UPGRADEMENU(CURSOR,0,10000,2) end
+			if CURSOR_SUBITEM_INDEX == 0 then UPGRADEMENU(CURSOR,0,10000,2) end
 		end
 		if CURSOR.avupgrade == 4 and CURSOR.upgrade == 8 then
-			if CURSOR_PANEL == "STORE" then UPGRADEMENU(CURSOR,0,100000,3) end
+			if CURSOR_SUBITEM_INDEX == 0 then UPGRADEMENU(CURSOR,0,100000,3) end
 		end
 		if CURSOR.avupgrade == 5 and CURSOR.upgrade == 16 then
-			if CURSOR_PANEL == "STORE" then UPGRADEMENU(CURSOR,0,10000000,4) end
+			if CURSOR_SUBITEM_INDEX == 0 then UPGRADEMENU(CURSOR,0,10000000,4) end
 		end
 		if GRANDMA.avupgrade == 1 and GRANDMA.upgrade == 1 then
 			UPGRADEMENU(GRANDMA,1,1000,0)
@@ -1039,7 +1072,7 @@ while System.mainLoop() do
 			gpu_drawtext(5, 204,Th..": 0"..Tm, blue)
 		end
 		gpu_drawtext(290, 5,"STORE",white)
-		if STORE.stat == 0 and CURSOR_PANEL == "UPGRADES" then
+		if STORE.stat == 0 and CURSOR_SUBITEM_INDEX > 0 then
 			drawCursorUpgradePanel()
 		end
 		screenshotmake()
@@ -1061,11 +1094,11 @@ while System.mainLoop() do
 		if STORE.y>86+33*(-STORE.stat) then 
 			STORE.y=STORE.y-11
 		end
-		if Controls.check(pad,KEY_DUP) and not Controls.check(oldpad,KEY_DUP) and STORE.stat>0 and not (STORE.stat==0 and CURSOR_PANEL=="UPGRADES") then
+		if Controls.check(pad,KEY_DUP) and not Controls.check(oldpad,KEY_DUP) and STORE.stat>0 and not (STORE.stat==0 and CURSOR_SUBITEM_INDEX>0) then
 			STORE.stat=STORE.stat-1
 			Abig=nil
 		end
-		if Controls.check(pad,KEY_DDOWN) and not Controls.check(oldpad,KEY_DDOWN) and STORE.stat<STORE.max and not (STORE.stat==0 and CURSOR_PANEL=="UPGRADES") then
+		if Controls.check(pad,KEY_DDOWN) and not Controls.check(oldpad,KEY_DDOWN) and STORE.stat<STORE.max and not (STORE.stat==0 and CURSOR_SUBITEM_INDEX>0) then
 			STORE.stat=STORE.stat+1
 			Abig=nil
 		end
@@ -1177,7 +1210,7 @@ while System.mainLoop() do
 		if Cookie == nil or Shine == nil or Gradient == nil or StoreHead == nil or pressed == nil or favicon == nil or cursor == nil or BackgroundSprites == nil or ObjectsSheet == nil or ButtonsSheet == nil then
 			else
 			justcurrency = 0
-			CURSOR_PANEL = "STORE"
+			CURSOR_SUBITEM_INDEX = 0
 			CURSOR_UPGRADE_INDEX = 1
 			loadCursorUpgrades(nil)
 			COOKIE = {size=1,count=0,total=0,tableone={},tabletwo={},upgrade=1,avupgrade=0}
