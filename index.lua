@@ -566,6 +566,45 @@ function BUYMENU(a,num,high)
 		Graphics.drawPartialImage(STORE.x, STORE.y+high, 0, high, 150, 33, ButtonsSheet,Shade)
 	end
 end
+function drawCursorSubitemInStore()
+	if CURSOR_SUBITEM_INDEX <= 0 then return end
+	local up = CURSOR_UPGRADES[CURSOR_SUBITEM_INDEX]
+	if up == nil then return end
+	local rowY = STORE.y
+	local canBuy = COOKIE.count >= up.price and isCursorUpgradeUnlocked(up) and not up.bought and status=="BUY menu"
+	if canBuy then
+		Graphics.drawPartialImage(STORE.x, rowY, 150, 0, 150, 33, ButtonsSheet)
+	else
+		Graphics.drawPartialImage(STORE.x, rowY, 150, 0, 150, 33, ButtonsSheet,Shade)
+	end
+	if up.bought then
+		Graphics.drawImage(STORE.x, rowY, sellborder)
+	end
+	local upIcon = CURSOR_UPGRADE_ICONS[CURSOR_SUBITEM_INDEX]
+	if upIcon == nil then upIcon = cursor end
+	local iconW = Graphics.getImageWidth(upIcon)
+	local iconH = Graphics.getImageHeight(upIcon)
+	local scale = 1
+	if iconW > 0 and iconH > 0 then
+		local maxSide = iconW
+		if iconH > maxSide then maxSide = iconH end
+		scale = 24 / maxSide
+	end
+	Graphics.fillRect(STORE.x+4, STORE.x+30, rowY+4, rowY+28, Color.new(20,20,20,180))
+	Graphics.drawImageExtended(STORE.x+17, rowY+16, 0, 0, iconW, iconH, 0, scale, scale, upIcon)
+	if STORE.stat==0 then
+		if up.bought then
+			gpu_drawtext(125,210,"BOUGHT", blue)
+		else
+			gpu_drawtext(125,210,"UP "..CURSOR_SUBITEM_INDEX, white)
+		end
+		if status=="BUY menu" then
+			Price = up.price
+		else
+			Price = 0
+		end
+	end
+end
 function BUYMENUPLUSONE(a,num)
 	local c = a
 	if Controls.check(pad,KEY_A) and not Controls.check(oldpad,KEY_A) and STORE.stat==num and COOKIE.count >= c.price and not (STORE.stat==0 and CURSOR_SUBITEM_INDEX>0) then
@@ -699,11 +738,27 @@ end
 function COUNTING(a,num)
 	local c = a
 	if STORE.stat==num then 
-		gpu_drawtext(125,210,"# "..c.count, white) 
-		if status=="BUY menu" then
-			Price = c.price
-			elseif status=="SELL menu" then
-			Price = c.sellprice
+		if num==0 and CURSOR_SUBITEM_INDEX>0 then
+			local up = CURSOR_UPGRADES[CURSOR_SUBITEM_INDEX]
+			if up ~= nil then
+				if up.bought then
+					gpu_drawtext(125,210,"BOUGHT", blue)
+				else
+					gpu_drawtext(125,210,"UP "..CURSOR_SUBITEM_INDEX, white)
+				end
+				if status=="BUY menu" then
+					Price = up.price
+				else
+					Price = 0
+				end
+			end
+		else
+			gpu_drawtext(125,210,"# "..c.count, white)
+			if status=="BUY menu" then
+				Price = c.price
+				elseif status=="SELL menu" then
+				Price = c.sellprice
+			end
 		end
 	end
 end
@@ -743,7 +798,9 @@ while System.mainLoop() do
 		end
 		if STORE.stat == 0 then
 			if Controls.check(pad,KEY_DLEFT) and not Controls.check(oldpad,KEY_DLEFT) then
-				if CURSOR_SUBITEM_INDEX > 0 then
+				if CURSOR_SUBITEM_INDEX == 0 then
+					CURSOR_SUBITEM_INDEX = CURSOR_UPGRADE_INDEX
+				elseif CURSOR_SUBITEM_INDEX > 0 then
 					CURSOR_SUBITEM_INDEX = CURSOR_SUBITEM_INDEX - 1
 				end
 			end
@@ -771,6 +828,7 @@ while System.mainLoop() do
 		Graphics.drawImage(0, 65, BackgroundTop)
 		if STORE.y>=86-32 then
 			BUYMENU(CURSOR,15,0)
+			drawCursorSubitemInStore()
 		end
 		if STORE.y>=86-65 and STORE.y<183-32 then
 			BUYMENU(GRANDMA,100,33)
@@ -1072,9 +1130,6 @@ while System.mainLoop() do
 			gpu_drawtext(5, 204,Th..": 0"..Tm, blue)
 		end
 		gpu_drawtext(290, 5,"STORE",white)
-		if STORE.stat == 0 and CURSOR_SUBITEM_INDEX > 0 then
-			drawCursorUpgradePanel()
-		end
 		screenshotmake()
 		Graphics.termBlend()
 		Graphics.initBlend(BOTTOM_SCREEN)
